@@ -1,0 +1,11 @@
+.container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; }
+.card { background: #f8fafc; padding: 1.5rem; margin-bottom: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; }
+.form-row, .btn-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin: 0.5rem 0; }
+textarea { width: 100%; padding: 0.5rem; font-family: monospace; background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; }
+button { padding: 0.6rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; }
+.primary { background: #2563eb; color: white; }
+.secondary { background: #64748b; color: white; }
+.success { background: #10b981; color: white; margin-top: 0.5rem; }
+.analysis { background: #f59e0b; color: black; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+h1 { text-align: center; color: #0f172a; }
