@@ -1,0 +1,43 @@
+<div class="container">
+  <h1>🏪 Provision Shop Sales Analyzer</h1>
+
+  <section class="card">
+    <h3>1. Upload Sales Data</h3>
+    <div class="form-row">
+      <input type="file" (change)="onRawSelect($event)" accept=".txt,.csv">
+      <label>Delimiter: <input type="text" [(ngModel)]="delimiter" placeholder="," style="width:40px"></label>
+    </div>
+    <button class="btn primary" (click)="cleanData()">🧹 Clean Data</button>
+  </section>
+
+  <section class="card">
+    <h3>2. Cleaned Data</h3>
+    <textarea [value]="cleanedText" readonly rows="6" placeholder="Cleaned data will appear here..."></textarea>
+    <div class="btn-row">
+      <button class="btn secondary" (click)="exportData()">📥 Export Cleaned Data</button>
+      <input type="file" (change)="uploadCleaned($event)" accept=".txt,.csv">
+      <button class="btn secondary" (click)="uploadCleaned($event)" [disabled]="!cleanedText">📤 Upload Cleaned (Optional)</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>3. Visualization</h3>
+    <button class="btn primary" (click)="showLineGraph()">📈 Line Graph Sales Detail</button>
+    <canvas id="salesChart" style="max-height: 300px;"></canvas>
+  </section>
+
+  <section class="card">
+    <h3>4. Data Analysis</h3>
+    <div class="btn-row">
+      <button class="btn analysis" (click)="runAnalysis('summary')">Summaries</button>
+      <button class="btn analysis" (click)="runAnalysis('table')">Tables</button>
+      <button class="btn analysis" (click)="runAnalysis('chart')">Charts</button>
+    </div>
+    <button class="btn success" (click)="runPredictions()" [disabled]="!analysisReady">🔮 Data Analytics</button>
+  </section>
+
+  <section class="card">
+    <h3>5. Predictions & Recommendations</h3>
+    <textarea [value]="predictionText" readonly rows="5" placeholder="Run analytics to see predictions..."></textarea>
+  </section>
+</div>
