@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import io
+import re
 
 st.set_page_config(page_title="Provision Shop Sales Analyzer", layout="wide")
 st.title("🏪 Provision Shop Sales Analyzer")
@@ -19,34 +20,61 @@ if "selected_product" not in st.session_state:
 uploaded = st.file_uploader("Upload Sales Data (.txt/.csv)", type=["txt", "csv"])
 delimiter = st.text_input("Delimiter", ",", max_chars=1)
 
+def clean_numeric_value(val):
+    """Convert value to numeric, handling errors like '3x'"""
+    if pd.isna(val) or val == '':
+        return np.nan
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        # Handle cases like '3x' - extract numeric part
+        if isinstance(val, str):
+            # Try to extract numbers from strings like '3x'
+            match = re.search(r'(\d+)', val)
+            if match:
+                return float(match.group(1))
+        return np.nan
+
 if st.button("🧹 Clean Data") and uploaded:
     try:
         raw = uploaded.read().decode("utf-8")
-        # Read with headers
-        df = pd.read_csv(io.StringIO(raw), delimiter=delimiter)
         
-        # Clean: remove rows with missing values in numeric columns, clip negatives
+        # Read with more flexible parsing
+        df = pd.read_csv(
+            io.StringIO(raw), 
+            delimiter=delimiter,
+            on_bad_lines='skip',  # Skip problematic lines
+            skipinitialspace=True
+        )
+        
+        # Define month columns
         month_cols = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 
                       'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
         
-        # Convert month columns to numeric
-        for col in month_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
+        # Check which month columns exist
+        existing_months = [col for col in month_cols if col in df.columns]
         
-        # Drop rows with all NaN in month columns
-        df = df.dropna(subset=month_cols, how='all')
+        # Clean numeric values in month columns
+        for col in existing_months:
+            df[col] = df[col].apply(clean_numeric_value)
         
-        # Fill remaining NaN with 0
-        for col in month_cols:
-            if col in df.columns:
-                df[col] = df[col].fillna(0).clip(lower=0)
+        # Fill missing values with 0 and clip negatives
+        for col in existing_months:
+            df[col] = df[col].fillna(0).clip(lower=0)
+        
+        # Remove completely empty rows
+        df = df.dropna(subset=existing_months, how='all')
         
         st.session_state.df = df.reset_index(drop=True)
         st.session_state.analysis_ready = False
         st.success(f"✅ Data cleaned! Found {len(st.session_state.df)} products")
+        
+        # Show data quality report
+        st.info(f"📊 **Data Quality Report:** Processed {len(existing_months)} months of sales data")
+        
     except Exception as e:
         st.error(f"Error processing file: {str(e)}")
+        st.warning("💡 **Tip:** Check if your file has consistent delimiters and no special characters")
 
 # 2. Cleaned Data Display & Export
 if st.session_state.df is not None:
@@ -63,7 +91,7 @@ if st.session_state.df is not None:
     # Product Selection
     if 'product_name' in st.session_state.df.columns:
         products = st.session_state.df['product_name'].tolist()
-        selected_product = st.selectbox("Select Product to Analyze", products)
+        selected_product = st.selectbox("🔍 Select Product to Analyze", products)
         st.session_state.selected_product = selected_product
         
         # Filter data for selected product
@@ -75,10 +103,14 @@ if st.session_state.df is not None:
                           'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
             month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-            sales_data = [product_row[col] for col in month_cols]
+            
+            existing_months = [col for col in month_cols if col in st.session_state.df.columns]
+            month_indices = [month_cols.index(col) for col in existing_months]
+            sales_data = [product_row[col] for col in existing_months]
+            display_months = [month_names[i] for i in month_indices]
             
             chart_data = pd.DataFrame({
-                'Month': month_names,
+                'Month': display_months,
                 'Sales': sales_data
             }).set_index('Month')
             st.line_chart(chart_data, use_container_width=True)
@@ -91,7 +123,8 @@ if st.session_state.df is not None:
         st.session_state.analysis_ready = True
         month_cols = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 
                       'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-        numeric_df = st.session_state.df[month_cols]
+        existing_months = [col for col in month_cols if col in st.session_state.df.columns]
+        numeric_df = st.session_state.df[existing_months]
         st.write("**Overall Sales Summary:**")
         st.write(numeric_df.describe())
         
@@ -104,7 +137,8 @@ if st.session_state.df is not None:
         if 'product_name' in st.session_state.df.columns:
             month_cols = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 
                           'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-            chart_df = st.session_state.df.set_index('product_name')[month_cols].T
+            existing_months = [col for col in month_cols if col in st.session_state.df.columns]
+            chart_df = st.session_state.df.set_index('product_name')[existing_months].T
             st.bar_chart(chart_df, use_container_width=True)
 
     # 5. Predictions & Recommendations
@@ -113,7 +147,8 @@ if st.session_state.df is not None:
             product_row = st.session_state.df[st.session_state.df['product_name'] == st.session_state.selected_product].iloc[0]
             month_cols = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 
                           'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-            sales_data = [product_row[col] for col in month_cols]
+            existing_months = [col for col in month_cols if col in st.session_state.df.columns]
+            sales_data = [product_row[col] for col in existing_months]
             
             X = np.arange(len(sales_data)).reshape(-1, 1)
             y = np.array(sales_data)
